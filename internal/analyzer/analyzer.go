@@ -2,19 +2,20 @@ package analyzer
 
 import (
 	"ConfigScanner/internal/rules"
+	"ConfigScanner/internal/rules/rule"
 	"ConfigScanner/pkg/models"
 )
 
 // Analyzer анализирует конфигурацию по набору правил
 // Структура хранит слайс правил, каждое из которых реализует интерфейс Rule
 type Analyzer struct {
-	rules []rules.Rule
+	rules []rule.Rule
 }
 
 // NewAnalyzer создает анализатор с правилами из ТЗ
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
-		rules: []rules.Rule{
+		rules: []rule.Rule{
 			&rules.DebugLogRule{},
 			&rules.PlainPasswordRule{},
 			&rules.BindAllRule{},
