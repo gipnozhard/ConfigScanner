@@ -1,0 +1,14 @@
+server:
+  host: 0.0.0.0
+  port: 3000
+  ssl:
+    enabled: false
+logging:
+  level: debug
+  format: json
+auth:
+  admin_password: secret123
+  jwt_secret: mysecret
+storage:
+  digest_algorithm: MD5
+  cipher: rc4

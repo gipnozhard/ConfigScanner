@@ -1,0 +1,28 @@
+{
+  "app": {
+    "name": "test-app",
+    "version": "1.0.0"
+  },
+  "server": {
+    "host": "localhost",
+    "port": 8080,
+    "tls": {
+      "enabled": true,
+      "cert_file": "/etc/ssl/cert.pem",
+      "key_file": "/etc/ssl/key.pem"
+    }
+  },
+  "logging": {
+    "level": "info",
+    "output": "stdout"
+  },
+  "database": {
+    "host": "localhost",
+    "password_env": "DB_PASSWORD",
+    "user": "root"
+  },
+  "security": {
+    "hash_algorithm": "sha256",
+    "encryption": "aes256"
+  }
+}

@@ -21,6 +21,10 @@ func (r PlainPasswordRule) Check(config map[string]interface{}, path string) []m
 
 		// Проверяем ключи, похожие на пароли
 		if isPasswordKey(key) {
+			if isSafeKey(key) {
+				continue // не считаем это проблемой
+			}
+
 			if str, ok := value.(string); ok && str != "" && !isEnvReference(str) {
 				problems = append(problems, models.Problem{
 					Rule:           r.Name(),
@@ -72,5 +76,29 @@ func isEnvReference(value string) bool {
 	lower := strings.ToLower(value)
 	return strings.Contains(lower, "env") ||
 		strings.Contains(lower, "${") ||
-		strings.HasPrefix(lower, "$")
+		strings.HasPrefix(lower, "$") ||
+		strings.Contains(lower, "env") ||
+		strings.Contains(lower, "file://") ||
+		strings.Contains(lower, "vault")
+}
+
+// isSafeKey проверяет, что ключ указывает на безопасный способ хранения
+func isSafeKey(key string) bool {
+	lower := strings.ToLower(key)
+
+	// Ключи, которые указывают на переменные окружения или файлы
+	safePatterns := []string{
+		"_env",  // password_env
+		"_file", // password_file
+		"_path", // password_path
+		"_from", // secret_from
+	}
+
+	for _, pattern := range safePatterns {
+		if strings.HasSuffix(lower, pattern) {
+			return true
+		}
+	}
+
+	return false
 }
