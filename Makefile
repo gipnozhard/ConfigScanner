@@ -13,7 +13,7 @@ run-good: build
 	./$(BINARY) examples/good-config.json
 
 run-stdin: build
-	cat examples/test.yaml | ./$(BINARY) --stdin
+	cat $(file) | ./$(BINARY) --stdin
 
 clean:
 	rm -f $(BINARY)
