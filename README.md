@@ -199,3 +199,15 @@ ConfigScanner
        ▼
    Console (stdout)
 ```
+
+## Что именно считается "проблемой"
+
+Утилита реагирует на любое из 5 правил:
+```
+|Правило	|Условие срабатывания	        |Пример
+|debug-log	|level: debug	                |logging.level = "debug"
+|plain-password	|Пароль/секрет в открытом виде	|password: "admin123"
+|bind-all	|host: 0.0.0.0	                |server.host = "0.0.0.0"
+|tls-disabled	|tls.enabled: false	        |tls.enabled = false
+|weak-algorithm	|MD5, DES, RC4 и др.	        |hash_algorithm: "md5"
+```
