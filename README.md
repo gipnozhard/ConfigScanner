@@ -1,4 +1,5 @@
-**ConfigScanner** — утилита командной строки для анализа конфигурационных файлов веб-приложений (YAML/JSON). Автоматически выявляет потенциально опасные настройки безопасности и выдаёт рекомендации по их устранению.
+# **ConfigScanner** 
+— утилита командной строки для анализа конфигурационных файлов веб-приложений (YAML/JSON). Автоматически выявляет потенциально опасные настройки безопасности и выдаёт рекомендации по их устранению.
 
 ConfigScanner анализирует конфигурационные файлы и находит:
 
@@ -12,6 +13,18 @@ ConfigScanner анализирует конфигурационные файлы
 - Уровень опасности (`LOW`, `MEDIUM`, `HIGH`)
 - Краткое объяснение
 - Рекомендация по исправлению
+
+## Возможности
+
+- **CLI утилита** - анализ файлов конфигурации
+- **HTTP сервер** - REST API для анализа конфигураций
+- **Поддержка JSON и YAML** форматов
+- **5 правил безопасности**:
+    - Debug-логирование (`LOW`)
+    - Пароли в открытом виде (`HIGH`)
+    - Прослушивание 0.0.0.0 (`MEDIUM`)
+    - Отключённый TLS (`HIGH`)
+    - Слабые алгоритмы (`HIGH`)
 
 ## Установка
 ```bash
@@ -132,8 +145,10 @@ make run-stdin file=<config-file>
 ```
 ConfigScanner
 ├── cmd
-│   └── cli                   # Точка входа CLI
-│       └── main.go           # Главный файл с логикой флагов и запуска
+│   ├── cli                   # Точка входа CLI
+│   │   └── main.go           # Главный файл с логикой флагов и запуска
+│   └── httpserver            # HTTP сервер
+│       └── http.go           # Запуск сервера
 ├── examples                  # Примеры конфигурационных файлов
 │   ├── bad-config.json       # Пример JSON конфига (опасный)
 │   ├── good-config.json      # Пример JSON конфига (безопасный)
@@ -143,6 +158,8 @@ ConfigScanner
 ├── internal                  # Внутренние пакеты (не для внешнего использования)
 │   ├── analyzer              # Анализатор конфигурации
 │   │   └── analyzer.go       # Запускает все правила на проверку
+│   ├── httphandlers
+│   │   └── handlers.go       # Обработчики запросов
 │   ├── output                # Форматирование вывода
 │   │   └── output.go         # TextFormatter, интерфейс Formatter
 │   ├── parser                # Парсер конфигураций 
@@ -211,3 +228,107 @@ ConfigScanner
 |bind-all	|host: 0.0.0.0	 |server.host = "0.0.0.0"
 |tls-disabled	|tls.enabled: false	 |tls.enabled = false
 |weak-algorithm	|MD5, DES, RC4 и др.	 |hash_algorithm: "md5"
+
+
+# Запускать утилиту в качестве http-сервера, который имеет REST API. 
+## С помощью API можно также передавать конфигурацию на проверку и получать в качестве ответа массив проблем.
+
+### Запуск
+
+```bach
+# Стандартный запуск (порт 8080)
+make run-http
+
+# Или напрямую
+go run cmd/httpserver/http.go
+
+# С кастомным портом
+go run cmd/httpserver/http.go -port=9090
+```
+
+### API Эндпоинты
+#### GET /health - проверка здоровья сервера
+Пример запроса:
+```bach
+curl http://localhost:8080/health
+```
+Пример ответа:
+```json
+{
+  "status": "ok"
+}
+```
+#### POST /analyze - анализ конфигурации
+Пример запроса с JSON файлом:
+```bach
+curl -X POST http://localhost:8080/analyze \
+  -H "Content-Type: application/json" \
+  -d @examples/bad-config.json
+```
+Пример запроса с YAML файлом:
+```bach
+curl -X POST http://localhost:8080/analyze \
+  --data-binary @examples/test.yaml
+```
+Пример запроса с прямой JSON строкой:
+```bach
+curl -X POST http://localhost:8080/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"logging":{"level":"debug"},"server":{"host":"0.0.0.0"}}'
+```
+
+Пример ответа (есть проблемы):
+```json
+{
+  "count": 2,
+  "problems": [
+    {
+      "path": "logging.level",
+      "explanation": "Обнаружен debug-режим логирования",
+      "rule": "debug-log",
+      "level_problem": "LOW",
+      "recommendation": "Поменяйте режим на более избирательный (info+)"
+    },
+    {
+      "path": "server.host",
+      "explanation": "Сервер слушает на всех интерфейсах (0.0.0.0)",
+      "rule": "bind-all",
+      "level_problem": "MEDIUM",
+      "recommendation": "Ограничьте доступ, используйте localhost или конкретный IP-адрес"
+    }
+  ]
+}
+```
+
+Пример ответа (проблем нет):
+```json
+{
+  "count": 0,
+  "problems": null
+}
+```
+
+## Коды ответов HTTP
+|Код	| Описание                              
+|-|-|
+|200	| Успешная обработка (проблемы могут быть или отсутствовать) 
+|400	|Ошибка парсинга конфига (невалидный JSON/YAML)
+|405	|Использован неподдерживаемый метод (нужен POST)
+
+## Тестирование HTTP сервера
+
+```bash
+# Запустить тесты (сервер должен быть запущен)
+make test-http
+```
+
+## Команды Makefile для http
+
+|Команда	|Описание
+|- |-
+|make build-http	|Собрать HTTP сервер
+|make run-http	|Запустить HTTP сервер (порт 8080)
+|make run-http-port |port=9090	Запустить HTTP сервер на кастомном порту
+|make test-http	|Протестировать HTTP сервер
+|make stop-http	|Остановить HTTP сервер
+|make clean	Удалить бинарные файлы
