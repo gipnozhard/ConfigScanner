@@ -148,6 +148,11 @@ ConfigScanner
 ├── cmd
 │   ├── cli                   # Точка входа CLI
 │   │   └── main.go           # Главный файл с логикой флагов и запуска
+│   ├── grpc                  # grpc 
+│   │   ├── client
+│   │   │   └── client.go
+│   │   └── server
+│   │       └── server.go
 │   └── httpserver            # HTTP сервер
 │       └── http.go           # Запуск сервера
 ├── examples                  # Примеры конфигурационных файлов
@@ -180,6 +185,10 @@ ConfigScanner
 ├── pkg                       # Публичные пакеты
 │   └── models                # Модели данных
 │       └── problem.go        # Problem, LevelProblem (LOW/MEDIUM/HIGH)
+├── proto                     # протофайл
+│   ├── grpc_grpc.pb.go
+│   ├── grpc.pb.go
+│   └── grpc.proto
 └── README.md                 # Документация
 
 13 directories, 19 files
