@@ -6,9 +6,7 @@ import (
 	"io"
 	"os"
 
-	"ConfigScanner/internal/analyzer"
-	"ConfigScanner/internal/output"
-	"ConfigScanner/internal/parser"
+	"ConfigScanner/internal/algo_config/cli"
 )
 
 func main() {
@@ -28,6 +26,9 @@ func main() {
 	// Флаг для чтения из STDIN вместо файла
 	stdin := flag.Bool("stdin", false, "Читать конфигурацию из STDIN вместо файла")
 
+	// НОВЫЙ ФЛАГ для рекурсивного анализа директории
+	dir := flag.Bool("dir", false, "Рекурсивно анализировать все конфиги в директории")
+
 	// flag.Parse() - ОБЯЗАТЕЛЬНЫЙ вызов!
 	// Он анализирует os.Args (все аргументы командной строки) и заполняет созданные флаги
 	// БЕЗ ЭТОГО флаги всегда будут иметь значение по умолчанию (false)
@@ -38,9 +39,27 @@ func main() {
 	// *silent - разыменование указателя (получаем значение bool)
 	isSilent := *silent || *silentLong
 
+	//НОВЫЙ РЕЖИМ: анализ директории
+	// Проверяем: указан ли флаг --dir?
+	if *dir {
+		// flag.NArg() возвращает количество позиционных аргументов (не флагов)
+		// Пример: ./program --dir ./configs
+		//   NArg() = 1 ("./configs")
+		if flag.NArg() < 1 {
+			// Ззабыли указать путь к директории
+			// Выводим ошибку в STDERR (стандартный поток ошибок)
+			fmt.Fprintln(os.Stderr, "укажите путь к директории")
+			os.Exit(1)
+		}
+		// flag.Arg(0) - берём первый аргумент (индекс 0)
+		// Вызываем функцию анализа директории из пакета cli
+		cli.AnalyzeDirectory(flag.Arg(0), isSilent)
+		return // Выходим из main, так как всё сделано
+	}
+
 	// Читаем конфигурацию
-	var configData []byte
-	var err error
+	var configData []byte // Срез байтов для хранения содержимого конфига
+	var err error         // Для хранения ошибок
 
 	// Проверяем: указан ли флаг --stdin?
 	if *stdin {
@@ -56,9 +75,10 @@ func main() {
 			os.Exit(1) // Выход с кодом 1 (ошибка)
 		}
 	} else {
+		// Режим одного файла
 		// flag.NArg() возвращает количество позиционных аргументов (не флагов)
 		if flag.NArg() < 1 { // если число аргументов NArg меньше одного, то выводим ошибку
-			fmt.Fprintln(os.Stderr, "укажите файл конфигурации")
+			fmt.Fprintln(os.Stderr, "укажите файл конфигурации или используйте --dir для анализа директории")
 			os.Exit(1)
 		}
 
@@ -72,49 +92,17 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Ошибка чтения файла %s: %v\n", filename, err)
 			os.Exit(1)
 		}
+		// Вызываем функцию анализа одного конфига из пакета cli
+		// Передаём:
+		// - configData: содержимое файла
+		// - filename: имя файла (для вывода в отчёте)
+		// - isSilent: флаг тихого режима
+		cli.AnalyzeConfig(configData, filename, isSilent)
 	}
 
-	// Парсим конфиг
-	// Создаём новый парсер (из нашего пакета parser)
-	// NewParser() - конструктор, возвращает готовый объект парсера
-	configParser := parser.NewParser()
-	// Парсим байтовые данные в структуру map[string]interface{}
-	// Парсер сам определяет формат: JSON или YAML
-	// Возвращает: config: map с распарсенными данными, err: ошибка, если формат неправильный
-	config, err := configParser.Parse(configData)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Ошибка парсинга: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Анализируем
-	// Создаём анализатор со всеми правилами
-	// NewAnalyzer() создаёт анализатор с правилами: DebugLogRule (debug-логирование)
-	// PlainPasswordRule (пароли в открытом виде)
-	// BindAllRule (0.0.0.0)
-	// TLSDisabledRule (отключённый TLS)
-	// WeakAlgorithmRule (слабые алгоритмы)
-	analyzer := analyzer.NewAnalyzer()
-	// Запускаем анализ
-	// Analyze рекурсивно обходит весь конфиг и применяет все правила
-	// Возвращает срез найденных проблем ([]models.Problem)
-	problems := analyzer.Analyze(config)
-
-	// Выводим результат
-	// Создаём форматтер для текстового вывода
-	// TextFormatter преобразует срез проблем в красивую строку
-	formatter := output.TextFormatter{}
-	// Выводим результат в консоль
-	// Print внутри вызывает formatter.Format() и печатает в STDOUT
-	output.Print(problems, formatter)
-
-	// Выходим с кодом ошибки при наличии проблем
-	// Проверяем:
-	// 1. len(problems) > 0 - есть хотя бы одна проблема?
-	// 2. !isSilent - не включен ли silent-режим?
-	// Если оба условия true - выходим с кодом ошибки 1
-	if len(problems) > 0 && !isSilent {
-		os.Exit(1)
-	}
-	// Если проблем нет ИЛИ включен silent-режим os.Exit(0) вызывается неявно
+	// Если мы дошли до этой точки в режиме STDIN, нужно вызвать AnalyzeConfig
+	// в ветке else мы уже вызвали AnalyzeConfig,
+	// а здесь этот вызов нужен только для ветки if *stdin
+	// Анализируем конфиг из STDIN (имя файла не указываем - пустая строка)
+	cli.AnalyzeConfig(configData, "", isSilent)
 }

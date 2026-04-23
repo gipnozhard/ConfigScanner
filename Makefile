@@ -44,6 +44,12 @@ stop-http:
 	@echo "Остановка HTTP сервера на порту 8080..."
 	@lsof -ti:8080 | xargs kill -9 2>/dev/null || echo "Сервер остановлен!"
 
+run-dir:
+	go run cmd/cli/main.go --dir $(DIR)
+
+run-dir-silent:
+	go run cmd/cli/main.go --dir --silent $(DIR)
+
 help:
 	@echo "Команды cli:"
 	@echo "  make build      - собрать программу"
@@ -51,6 +57,7 @@ help:
 	@echo "  make run-bad    - запустить на bad-config.json"
 	@echo "  make run-good   - запустить на good-config.json"
 	@echo "  make run-stdin  - запустить из STDIN"
+	@echo "	 make run-dir    - рекурсивно анализировать директорию (make run-dir DIR=./configs)"
 	@echo "  make clean      - удалить бинарник"
 
 	@echo "Команды http:"
@@ -59,3 +66,4 @@ help:
 	@echo "  make build-http      - собрать бинарник HTTP сервера"
 	@echo "  make test-http       - протестировать HTTP сервер (отправить тестовые запросы)"
 	@echo "  make stop-http       - остановить HTTP сервер (если запущен в фоне)"
+
