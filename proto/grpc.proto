@@ -1,0 +1,52 @@
+// Версия Protocol Buffers - указывает, какой синтаксис используется
+// proto3 - современная версия (проще чем proto2, все поля по умолчанию optional)
+syntax = "proto3";
+
+// Название пакета - пространство имён для сгенерированного кода
+// Помогает избежать конфликтов имён между разными proto-файлами
+// В Go пакет будет использоваться как часть имени сгенерированного типа
+package analyzer;
+
+// Настройка для генерации Go кода
+// Два параметра через точку с запятой:
+//   1. ConfigScanner/proto - путь, где будет создан файл
+//   2. proto - имя пакета в сгенерированном Go файле
+//
+// После генерации появится файл: ConfigScanner/proto/grpc-grpc.pb.go
+// с пакетом "proto"
+option go_package = "ConfigScanner/proto;proto";
+
+// Определение сервиса (как интерфейс в Go)
+// Сервис содержит набор RPC (Remote Procedure Call) методов
+// Клиент может вызывать эти методы как обычные функции
+service ConfigAnalyzer {
+  // RPC метод Analyze
+  // Принимает AnalyzeRequest, возвращает AnalyzeResponse
+  // Работает как: клиент отправляет запрос → сервер отвечает
+  rpc Analyze (AnalyzeRequest) returns (AnalyzeResponse);
+}
+
+
+// Сообщение AnalyzeRequest - структура запроса от клиента к серверу
+// Аналог struct в Go
+message AnalyzeRequest {
+  bytes config_data = 1;  // JSON или YAML в байтах
+  string filename = 2;     // опционально, filename - используется только для отладки и вывода в консоль
+}
+
+// Сообщение Problem - описание одной проблемы безопасности
+// Полностью соответствует models.Problem из Go кода
+message Problem {
+  string path = 1;  // Путь к полю в конфиге (например "server.host")
+  string explanation = 2; // Описание проблемы (например "Обнаружен debug-режим")
+  string rule = 3; // Название правила (например "debug-log")
+  string level_problem = 4; // Уровень опасности: "LOW", "MEDIUM", "HIGH"
+  string recommendation = 5; // Рекомендация по исправлению
+}
+
+// Сообщение AnalyzeResponse - ответ от сервера клиенту
+message AnalyzeResponse {
+  // repeated - поле может содержать несколько значений
+  repeated Problem problems = 1; // Список найденных проблем
+  int32 count = 2; // Количество проблем (дублирует len(problems), но удобно)
+}
